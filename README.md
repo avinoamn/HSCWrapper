@@ -1,2 +1,2 @@
 # HSCWrapper
-hbase-scala connector wrapper
+hbase-spark connector wrapper
