@@ -1,23 +1,33 @@
 package github.avinoamn.HSCWrapper.models
 
 import github.avinoamn.HSCWrapper.utils.ColumnsUtils.{getHBColumnFamilyAndQualifier, getHBColumnType}
-import github.avinoamn.HSCWrapper.utils.Consts.ROWKEY_COLUMN_FAMILY
 import org.apache.spark.sql.types.{DataType, StringType}
 
+/**
+ * HBase column details (for building the catalog).
+ *
+ * @param columnName HBase column name alias in Spark `DataFrame`
+ * @param columnFamily HBase column family
+ * @param columnQualifier HBase column qualifier
+ * @param columnType Type name of the column's `DataType`
+ */
 case class HBColumn(columnName: String, columnFamily: String, columnQualifier: String, columnType: String)
 
-/*
-* Factory object/method that expects a valid HBase column name (column family and qualifier), and
-* it's Spark `DataType` (`StringType` as a default value). And creates with them an instance of
-* the `HBColumn` case class.
-* */
 object HBColumn {
-  def apply(columnName: String, dataType: DataType=StringType): HBColumn = {
+  /**
+   * Factory method for the `HBColumn` case class.
+   *
+   * @param columnName HBase column name (column family and qualifier)
+   * @param dfColumnName HBase column name alias in Spark `DataFrame`
+   * @param dataType Spark `DataType` of the HBase column
+   * @return Instance of `HBColumn` case class
+   */
+  def apply(columnName: String, dfColumnName: String="", dataType: DataType=StringType): HBColumn = {
     val (columnFamily, columnQualifier) = getHBColumnFamilyAndQualifier(columnName)
     val columnType = getHBColumnType(dataType)
 
     HBColumn(
-      if (columnFamily == ROWKEY_COLUMN_FAMILY) columnFamily else columnName,
+      if (dfColumnName.nonEmpty) dfColumnName else columnName,
       columnFamily,
       columnQualifier,
       columnType)

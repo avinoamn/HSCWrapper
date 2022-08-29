@@ -6,75 +6,74 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types._
 
 object ColumnsUtils {
-  /*
-  * Drops From DataFrame every row that all it's columns (except rowkey column) values
-  * are `null` or undefined.
-  *
-  * We use this function before writing to HBase because it cannot accept rows that all
-  * their columns are `null` or undefined.
-  * */
+  /**
+   * Drops From Spark `DataFrame` every row that all it's columns (except rowkey column) values
+   * are `null` or undefined.
+   *
+   * We use this function before writing to HBase because it cannot accept rows that all
+   * their columns are `null` or undefined.
+   */
   def dropNullRows(df: DataFrame): DataFrame = {
     val notRowkeyColumns = getNotRowkeyColumns(df.columns)
     df.na.drop("all", notRowkeyColumns)
   }
 
-  /*
-  * From array of columns names, return array subset of all the columns
-  * not matching the HBase "rowkey" column.
-  * */
+  /**
+   * From array of HBase columns names, return array subset of all the columns
+   * not matching the HBase "rowkey" column.
+   */
   def getNotRowkeyColumns(columns: Array[String]): Array[String] = {
-    columns.filterNot(column => column.equals(ROWKEY_COLUMN) ||  column.startsWith(s"$ROWKEY_COLUMN:"))
+    columns.filterNot(_.equals(ROWKEY_COLUMN))
   }
 
-  /*
-  * From array of `HBColumn`s, return column matching the HBase "rowkey" column.
-  * If "rowkey" column does not exist, return `null`.
-  * */
+  /**
+   * From array of `HBColumn`s, return column matching the HBase "rowkey" column.
+   * If "rowkey" column does not exist, return `null`.
+   */
   def getRowkeyColumn(hbColumns: Array[HBColumn]): HBColumn = {
-    hbColumns.find(_.columnName.equals(ROWKEY_COLUMN)).orNull
+    hbColumns.find(_.columnFamily.equals(ROWKEY_COLUMN)).orNull
   }
 
-  /*
-  * Gets an array of columns names, and creates `HBColumn` for each column name in
-  * the array with the default Spark type `StringType`.
-  * */
+  /**
+   * Gets an array of columns names, and creates `HBColumn` for each column name in
+   * the array with the default Spark type `StringType`.
+   */
   def getHBColumns(columns: Array[String]): Array[HBColumn] = {
     columns.map(column => HBColumn(column))
   }
 
-  /*
-  * Gets an array of `StructField`s, and creates `HBColumn` for each `StructField` in the array .
-  * */
+  /**
+   * Gets an array of `StructField`s, and creates `HBColumn` for each `StructField` in the array .
+   */
   def getHBColumns(dfSchemaFields: Array[StructField]): Array[HBColumn] = {
-    dfSchemaFields.map(dfSchemaField => HBColumn(dfSchemaField.name, dfSchemaField.dataType))
+    dfSchemaFields.map(dfSchemaField => HBColumn(dfSchemaField.name, dataType=dfSchemaField.dataType))
   }
 
-  /*
-  * Extracts HBase column family and qualifier from column name string.
-  *
-  * Examples:
-  *   "rowkey"                => ("rowkey", "key")
-  *   "rowkey:key1:key2:key3" => ("rowkey", "key1:key2:key3")
-  *   "cf:col"                => ("cf", "col")
-  * */
+  /**
+   * Extracts HBase column family and qualifier from HBase column name.
+   *
+   * Examples:
+   *   "rowkey" => ("rowkey", "key")
+   *   "cf:col" => ("cf", "col")
+   */
   def getHBColumnFamilyAndQualifier(columnName: String): (String, String) = {
     columnName.split(":").toSeq match {
       case ROWKEY_COLUMN +: Nil => (ROWKEY_COLUMN_FAMILY, ROWKEY_QUALIFIER)
-      case ROWKEY_COLUMN_FAMILY +: rowkeyQualifiers => (ROWKEY_COLUMN_FAMILY, rowkeyQualifiers.mkString(":"))
+      case ROWKEY_COLUMN +: _ => throw new Exception(s"Rowkey column '${columnName}' can't have qualifiers")
       case columnFamily +: columnQualifier +: Nil => (columnFamily, columnQualifier)
       case _ => throw new Exception(s"Invalid HBase column: '${columnName}'")
     }
   }
 
-  /*
-  * Converts Spark Sql Type to it's HBase supported `typeName` value
-  *
-  * Examples:
-  *   BooleanType => "boolean"
-  *   StringType  => "string"
-  *   IntegerType => "integer"
-  *   etc.
-  * */
+  /**
+   * Converts Spark Sql Type to it's HBase supported `typeName` value.
+   *
+   * Examples:
+   *   BooleanType => "boolean"
+   *   StringType  => "string"
+   *   IntegerType => "integer"
+   *   etc.
+   */
   def getHBColumnType(dataType: DataType): String = {
     dataType match {
       case BooleanType => BooleanType.typeName
