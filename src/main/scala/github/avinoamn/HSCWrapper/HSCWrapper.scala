@@ -1,7 +1,6 @@
 package github.avinoamn.HSCWrapper
 
 import github.avinoamn.HSCWrapper.models.{HBColumn, HBTable}
-import github.avinoamn.HSCWrapper.utils.Consts.NEW_TABLE_REGIONS_NUMBER
 import github.avinoamn.HSCWrapper.utils.ColumnsUtils.{dropNullRows, getHBColumns, getRowkeyColumn}
 import org.apache.hadoop.hbase.spark.datasources.HBaseTableCatalog
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
@@ -11,7 +10,7 @@ object HSCWrapper {
 
   /**
    * Wrapper to `read` function to support it with `HBTable` (with the default `namespace` value),
-   * and with an array of `HBColumn`s (with their default `dataType` value).
+   * and with an array of HBase columns names.
    *
    * @param tableName HBase table name
    * @param columns Array of HBase column names
@@ -19,8 +18,21 @@ object HSCWrapper {
    * @return Spark `DataFrame` of the Read HBase Table
    */
   def read(tableName: String, columns: Array[String])(implicit spark: SparkSession): DataFrame = {
-    val hbColumns = getHBColumns(columns)
     val table = HBTable(tableName)
+    read(table, columns)
+  }
+
+  /**
+   * Wrapper to `read` function to support it with `HBTable`,
+   * and with an array of `HBColumn`s (with their default `dataType` value).
+   *
+   * @param table `HBTable`
+   * @param columns Array of HBase column names
+   * @param spark implicit `SparkSession`
+   * @return Spark `DataFrame` of the Read HBase Table
+   */
+  def read(table: HBTable, columns: Array[String])(implicit spark: SparkSession): DataFrame = {
+    val hbColumns = getHBColumns(columns)
     read(table, hbColumns)
   }
 
@@ -68,8 +80,7 @@ object HSCWrapper {
   }
 
   /**
-   * Wrapper to `write` function to support it with Spark `DataFrame`, and with catalog (built
-   * with given `HBTable` and an array of `HBColumn`s).
+   * Wrapper to `write` function to support it with Spark `DataFrame`, `HBTable` and an array of `HBColumn`s.
    *
    * @param ds Spark `Dataset` to write to HBase
    * @param table `HBTable`
@@ -78,11 +89,25 @@ object HSCWrapper {
    */
   def write[T](ds: Dataset[T], table: HBTable, columns: Array[String])(implicit spark: SparkSession): Unit = {
     val df = ds.toDF(columns: _*)
-    val droppedNullRowsDf = dropNullRows(df)
     val hbColumns = getHBColumns(df.schema.fields)
 
+    write(df, table, hbColumns)
+  }
+
+  /**
+   * Wrapper to `write` function to support it with Spark `DataFrame`, catalog (built
+   * with given `HBTable` and an array of `HBColumn`s), and `newTableRegionsNumber`.
+   *
+   * @param df Spark `Dataset` to write to HBase
+   * @param table `HBTable`
+   * @param hbColumns Array of `HBColumn`
+   * @param spark implicit `SparkSession`
+   */
+  def write(df: DataFrame, table: HBTable, hbColumns: Array[HBColumn])(implicit spark: SparkSession): Unit = {
+    val droppedNullRowsDf = dropNullRows(df)
+
     val catalog = buildCatalog(table, hbColumns)
-    write(droppedNullRowsDf, catalog)
+    write(droppedNullRowsDf, catalog, table.newTableRegionsNumber)
   }
 
   /**
@@ -90,13 +115,14 @@ object HSCWrapper {
    *
    * @param df Spark `DataFrame` to write to HBase
    * @param catalog HBase table catalog fitting the `DataFrame`'s schema
+   * @param newTableRegionsNumber If defined and larger than 3, a new table will be created with the nubmer of region specified
    * @param spark implicit `SparkSession`
    */
-  def write(df: DataFrame, catalog: String)(implicit spark: SparkSession): Unit = {
+  def write(df: DataFrame, catalog: String, newTableRegionsNumber: String)(implicit spark: SparkSession): Unit = {
     df
       .write
       .format(HSC_FORMAT)
-      .options(Map(HBaseTableCatalog.tableCatalog -> catalog, HBaseTableCatalog.newTable -> NEW_TABLE_REGIONS_NUMBER))
+      .options(Map(HBaseTableCatalog.tableCatalog -> catalog, HBaseTableCatalog.newTable -> newTableRegionsNumber))
       .save()
   }
 
