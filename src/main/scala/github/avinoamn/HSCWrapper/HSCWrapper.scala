@@ -1,7 +1,8 @@
 package github.avinoamn.HSCWrapper
 
 import github.avinoamn.HSCWrapper.models.{HBColumn, HBTable}
-import github.avinoamn.HSCWrapper.utils.ColumnsUtils.{dropNullRows, getHBColumns, getRowkeyColumn}
+import github.avinoamn.HSCWrapper.utils.ColumnsUtils.{dropNullRows, getHBColumns, getRowkeyColumns, getRowkeyQualifiersString}
+import github.avinoamn.HSCWrapper.utils.Consts.ROWKEY_COLUMN_FAMILY
 import org.apache.hadoop.hbase.spark.datasources.HBaseTableCatalog
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
@@ -104,7 +105,7 @@ object HSCWrapper {
    * @param spark implicit `SparkSession`
    */
   def write(df: DataFrame, table: HBTable, hbColumns: Array[HBColumn])(implicit spark: SparkSession): Unit = {
-    val droppedNullRowsDf = dropNullRows(df)
+    val droppedNullRowsDf = dropNullRows(df, hbColumns)
 
     val catalog = buildCatalog(table, hbColumns)
     write(droppedNullRowsDf, catalog, table.newTableRegionsNumber)
@@ -134,12 +135,13 @@ object HSCWrapper {
    * @return HBase table catalog
    */
   def buildCatalog(table: HBTable, hbColumns: Array[HBColumn]): String = {
-    val rowkeyHBColumn = getRowkeyColumn(hbColumns)
+    val rowkeyHBColumns = getRowkeyColumns(hbColumns)
+    val rowkeyQualifiersString = getRowkeyQualifiersString(rowkeyHBColumns)
 
-    if (rowkeyHBColumn != null) {
+    if (rowkeyHBColumns.nonEmpty) {
       val catalogTable = s""""table":{"namespace":"${table.namespace}", "name":"${table.name}"}"""
 
-      val catalogRowkey = s""""${rowkeyHBColumn.columnFamily}":"${rowkeyHBColumn.columnQualifier}""""
+      val catalogRowkey = s""""${ROWKEY_COLUMN_FAMILY}":"${rowkeyQualifiersString}""""
 
       val catalogColumns = hbColumns.map(hbColumn =>
         s""""${hbColumn.columnName}":{"cf":"${hbColumn.columnFamily}", "col":"${hbColumn.columnQualifier}", "type":"${hbColumn.columnType}"}""")

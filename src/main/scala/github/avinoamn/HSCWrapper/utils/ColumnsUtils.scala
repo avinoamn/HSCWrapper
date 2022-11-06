@@ -1,7 +1,7 @@
 package github.avinoamn.HSCWrapper.utils
 
 import github.avinoamn.HSCWrapper.models.HBColumn
-import github.avinoamn.HSCWrapper.utils.Consts.{ROWKEY_COLUMN, ROWKEY_COLUMN_FAMILY, ROWKEY_QUALIFIER}
+import github.avinoamn.HSCWrapper.utils.Consts.{ROWKEY_COLUMN_FAMILY, ROWKEY_QUALIFIER, ROWKEY_QUALIFIERS_SEPERATOR, ROWKEY_QUALIFIER_REGEX}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types._
 
@@ -13,8 +13,8 @@ object ColumnsUtils {
    * We use this function before writing to HBase because it cannot accept rows that all
    * their columns are `null` or undefined.
    */
-  def dropNullRows(df: DataFrame): DataFrame = {
-    val notRowkeyColumns = getNotRowkeyColumns(df.columns)
+  def dropNullRows(df: DataFrame, hbColumns: Array[HBColumn]): DataFrame = {
+    val notRowkeyColumns = getNotRowkeyColumns(hbColumns)
     df.na.drop("all", notRowkeyColumns)
   }
 
@@ -22,16 +22,26 @@ object ColumnsUtils {
    * From array of HBase columns names, return array subset of all the columns
    * not matching the HBase "rowkey" column.
    */
-  def getNotRowkeyColumns(columns: Array[String]): Array[String] = {
-    columns.filterNot(_.equals(ROWKEY_COLUMN))
+  def getNotRowkeyColumns(hbColumns: Array[HBColumn]): Array[String] = {
+    hbColumns
+      .filterNot(_.columnFamily.equals(ROWKEY_COLUMN_FAMILY))
+      .map(_.columnName)
   }
 
   /**
    * From array of `HBColumn`s, return column matching the HBase "rowkey" column.
    * If "rowkey" column does not exist, return `null`.
    */
-  def getRowkeyColumn(hbColumns: Array[HBColumn]): HBColumn = {
-    hbColumns.find(_.columnFamily.equals(ROWKEY_COLUMN)).orNull
+  def getRowkeyColumns(hbColumns: Array[HBColumn]): Array[HBColumn] = {
+    hbColumns
+      .filter(_.columnFamily.equals(ROWKEY_COLUMN_FAMILY))
+  }
+
+  def getRowkeyQualifiersString(rowkeyHBColumns: Array[HBColumn]): String = {
+    rowkeyHBColumns
+      .map(_.columnQualifier)
+      .sortBy(_.substring(3).toInt)
+      .mkString(ROWKEY_QUALIFIERS_SEPERATOR)
   }
 
   /**
@@ -54,40 +64,15 @@ object ColumnsUtils {
    *
    * Examples:
    *   "rowkey" => ("rowkey", "key")
+   *   "rowkey:key1" => ("rowkey", "key1")
    *   "cf:col" => ("cf", "col")
    */
   def getHBColumnFamilyAndQualifier(columnName: String): (String, String) = {
     columnName.split(":").toSeq match {
-      case ROWKEY_COLUMN +: Nil => (ROWKEY_COLUMN_FAMILY, ROWKEY_QUALIFIER)
-      case ROWKEY_COLUMN +: _ => throw new Exception(s"Rowkey column '${columnName}' can't have qualifiers")
-      case columnFamily +: columnQualifier +: Nil => (columnFamily, columnQualifier)
+      case ROWKEY_COLUMN_FAMILY +: Nil => (ROWKEY_COLUMN_FAMILY, ROWKEY_QUALIFIER)
+      case ROWKEY_COLUMN_FAMILY +: qualifier +: Nil if qualifier.matches(ROWKEY_QUALIFIER_REGEX) => (ROWKEY_COLUMN_FAMILY, qualifier)
+      case columnFamily +: columnQualifier +: Nil if columnFamily != ROWKEY_COLUMN_FAMILY => (columnFamily, columnQualifier)
       case _ => throw new Exception(s"Invalid HBase column: '${columnName}'")
-    }
-  }
-
-  /**
-   * Converts Spark Sql Type to it's HBase supported `typeName` value.
-   *
-   * Examples:
-   *   BooleanType => "boolean"
-   *   StringType  => "string"
-   *   IntegerType => "integer"
-   *   etc.
-   */
-  def getHBColumnType(dataType: DataType): String = {
-    dataType match {
-      case BooleanType => BooleanType.typeName
-      case ByteType => ByteType.typeName
-      case ShortType => ShortType.typeName
-      case IntegerType => IntegerType.typeName
-      case LongType => LongType.typeName
-      case FloatType => FloatType.typeName
-      case DoubleType => DoubleType.typeName
-      case DateType => DateType.typeName
-      case TimestampType => TimestampType.typeName
-      case StringType => StringType.typeName
-      case BinaryType => BinaryType.typeName
-      case _ => throw new Exception(s"Unsupported Spark data type '${dataType}'")
     }
   }
 }

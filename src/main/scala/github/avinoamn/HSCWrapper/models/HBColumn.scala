@@ -1,6 +1,6 @@
 package github.avinoamn.HSCWrapper.models
 
-import github.avinoamn.HSCWrapper.utils.ColumnsUtils.{getHBColumnFamilyAndQualifier, getHBColumnType}
+import github.avinoamn.HSCWrapper.utils.ColumnsUtils.getHBColumnFamilyAndQualifier
 import org.apache.spark.sql.types.{DataType, StringType}
 
 /**
@@ -24,7 +24,7 @@ object HBColumn {
    */
   def apply(columnName: String, dfColumnName: String="", dataType: DataType=StringType): HBColumn = {
     val (columnFamily, columnQualifier) = getHBColumnFamilyAndQualifier(columnName)
-    val columnType = getHBColumnType(dataType)
+    val columnType = dataType.simpleString
 
     HBColumn(
       if (dfColumnName.nonEmpty) dfColumnName else columnName,
