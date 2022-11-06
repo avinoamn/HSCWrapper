@@ -9,6 +9,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.SparkSession
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FeatureSpec}
+import utils.HBaseTestUtils
 
 case class IntKeyRecord(
   col0: Integer,
@@ -36,8 +37,6 @@ object IntKeyRecord {
 }
 
 class HSCWrapperE2E extends FeatureSpec with BeforeAndAfterEach with BeforeAndAfterAll {
-  val htu: HBaseTestingUtility = new HBaseTestingUtility()
-
   implicit val spark: SparkSession = SparkSession.builder()
     .master("local")
     .appName("HSCWrapperE2E")
@@ -45,23 +44,17 @@ class HSCWrapperE2E extends FeatureSpec with BeforeAndAfterEach with BeforeAndAf
     .getOrCreate()
 
   override def beforeAll(): Unit = {
-    htu.startMiniZKCluster(1, 2181)
-    htu.startMiniHBaseCluster(StartMiniClusterOption.builder.numMasters(1).numRegionServers(2).build)
+    HBaseTestUtils.startMiniCluster()
 
-    htu.createTable(TableName.valueOf(testTableName), testTableColumnFamily)
+    HBaseTestUtils.deleteAllTables()
+    HBaseTestUtils.createTable(testTableName, Array(testTableColumnFamily))
 
-    new HBaseContext(spark.sparkContext, htu.getConfiguration)
+    HBaseTestUtils.createHBaseContext(spark.sparkContext)
   }
 
   override def afterAll(): Unit = {
-    htu
-      .getAdmin
-      .listTableNames()
-      .foreach(htu.deleteTableIfAny)
-
-    htu.cleanupTestDir()
-    htu.shutdownMiniHBaseCluster()
-    htu.shutdownMiniZKCluster()
+    HBaseTestUtils.deleteAllTables()
+    HBaseTestUtils.shutdownMiniCluster()
 
     spark.stop()
   }
