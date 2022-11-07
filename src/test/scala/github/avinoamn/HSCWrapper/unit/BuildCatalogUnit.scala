@@ -1,7 +1,8 @@
-package unit
+package github.avinoamn.HSCWrapper.unit
 
 import github.avinoamn.HSCWrapper.HSCWrapper._
 import github.avinoamn.HSCWrapper.models.{HBColumn, HBTable}
+import github.avinoamn.HSCWrapper.utils.Consts.ROWKEY_COLUMN_FAMILY
 import org.apache.hadoop.hbase.spark.datasources.{DataTypeParserWrapper, HBaseTableCatalog}
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.spark.sql.types._
@@ -53,6 +54,15 @@ class BuildCatalogUnit extends FeatureSpec with BeforeAndAfterEach with BeforeAn
       assert(t.getField("col8").length == -1)
       assert(t.getField("col9").dt == DateType)
       assert(t.getField("col10").dt == TimestampType)
+    }
+
+    scenario("no rowkey column") {
+      val noRowkeyHBColumns: Array[HBColumn] = hbColumns.filterNot(_.columnFamily.equals(ROWKEY_COLUMN_FAMILY))
+
+      val thrown = intercept[Exception] {
+        buildCatalog(hbTable, noRowkeyHBColumns)
+      }
+      assert(thrown.getMessage === "HBase 'rowkey' column is not defined.")
     }
   }
 

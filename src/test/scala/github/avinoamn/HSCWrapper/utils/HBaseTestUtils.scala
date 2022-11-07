@@ -1,4 +1,4 @@
-package utils
+package github.avinoamn.HSCWrapper.utils
 
 import org.apache.hadoop.hbase.spark.HBaseContext
 import org.apache.hadoop.hbase.{HBaseTestingUtility, StartMiniClusterOption, TableName}
