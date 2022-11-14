@@ -11,6 +11,7 @@
     <spark.version>3.1.2</spark.version>
     <hadoop.version>3.2.1</hadoop.version>
     <hbase.version>2.4.13</hbase.version>
+    <hbase-connectors.version>1.0.0-${scala.version}_${spark.version}_${hadoop.version}_${hbase.version}</hbase-connectors.version>
   </properties>
 
   <dependencies>
@@ -61,7 +62,7 @@
     <dependency>
       <groupId>org.apache.hbase.connectors.spark</groupId>
       <artifactId>hbase-spark</artifactId>
-      <version>1.0.0-${scala.version}_${spark.version}_${hadoop.version}_${hbase.version}</version>
+      <version>${hbase-connectors.version}</version>
       <scope>provided</scope>
     </dependency>
 
