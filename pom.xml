@@ -86,6 +86,11 @@
       <name>Maven Central</name>
       <url>https://repo1.maven.org/maven2/</url>
     </repository>
+    <repository>
+      <id>central2</id>
+      <name>Cloudera Central</name>
+      <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+    </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
