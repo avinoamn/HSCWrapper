@@ -9,7 +9,9 @@ To generate an artifact for a different [Spark version](https://mvnrepository.co
 $ mvn -Dspark.version=3.1.2 -Dscala.version=2.12.13 -Dhadoop.version=3.2.1 -Dscala.binary.version=2.12 -Dhbase.version=2.4.13 -Dhbase-connectors.version={installed version} clean install
 ```
 
-Note: to build the wrapper with the right connector version, follow [this README](https://github.com/apache/hbase-connectors/blob/master/spark/README.md) to install the connector correctly.
+Note: to build the wrapper with the right connector version, follow [this README](https://github.com/apache/hbase-connectors/blob/master/spark/README.md) to install the connector correctly.   
+
+Note: More HBase Spark configuration are defined [here](https://github.com/apache/hbase-connectors/blob/master/spark/hbase-spark/src/main/scala/org/apache/hadoop/hbase/spark/datasources/HBaseSparkConf.scala).
 
 ## Application Usage
 The following illustrates the basic procedure on how to use the connector.   
@@ -51,6 +53,8 @@ And it's equal to the following Catalog:
             "DATE_FIELD":{"cf":"cf1", "col":"col6", "type":"date"}
         }
     }
+
+Note: Composite Rowkey is also supported. For example - `HBColumn("rowkey:key1", "KEY_1")`
 
 ### Write to HBase table to populate data
 
